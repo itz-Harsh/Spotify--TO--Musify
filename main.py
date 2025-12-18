@@ -47,8 +47,8 @@ def home():
     return {"status": "Harshuu Baby API is Fine !"}
 
 
-@app.get("/api/{url}")
-def convert(url : str):
+@app.post("/api/{url}")
+async def convert(url : str):
     
     try:
         data = []
