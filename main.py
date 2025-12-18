@@ -14,7 +14,7 @@ app = FastAPI(
 
 CLIENT_ID = os.getenv("SPOTIPY_CLIENT_ID")
 CLIENT_SECRET = os.getenv("SPOTIPY_CLIENT_SECRET")
-REDIRECT_URI = "http://127.0.0.1:8888/callback"
+REDIRECT_URI = os.getenv("SPOTIPY_REDIRECT_URI")
 
 def export_playlist(playlist_id):
     """
@@ -44,7 +44,7 @@ def export_playlist(playlist_id):
 
 @app.get("/")
 def home():
-    return {"status": "Harshuu Baby API is Fine !"}
+    return {"status": "API is Fine !"}
 
 
 @app.post("/api/{url}")
