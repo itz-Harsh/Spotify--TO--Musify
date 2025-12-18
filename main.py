@@ -1,3 +1,4 @@
+import base64
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 import os , requests
@@ -15,7 +16,38 @@ app = FastAPI(
 CLIENT_ID = os.getenv("SPOTIPY_CLIENT_ID")
 CLIENT_SECRET = os.getenv("SPOTIPY_CLIENT_SECRET")
 REDIRECT_URI = os.getenv("SPOTIPY_REDIRECT_URI") or  "https://spotify-to-musify.vercel.app/"
-SPOTIFY_ACCESS_TOKEN = os.getenv("SPOTIFY_ACCESS_TOKEN")
+
+
+
+
+def get_new_access_token():
+    client_id = os.getenv("SPOTIPY_CLIENT_ID")
+    client_secret = os.getenv("SPOTIPY_CLIENT_SECRET")
+    refresh_token = os.getenv("SPOTIFY_REFRESH_TOKEN")
+
+    auth_header = base64.b64encode(
+        f"{client_id}:{client_secret}".encode()
+    ).decode()
+
+    response = requests.post(
+        "https://accounts.spotify.com/api/token",
+        headers={
+            "Authorization": f"Basic {auth_header}",
+            "Content-Type": "application/x-www-form-urlencoded",
+        },
+        data={
+            "grant_type": "refresh_token",
+            "refresh_token": refresh_token,
+        },
+        timeout=10,
+    )
+
+    response.raise_for_status()
+    return response.json()["access_token"]
+
+SPOTIFY_ACCESS_TOKEN = get_new_access_token()
+
+
 def export_playlist(playlist_id):
    
     sp = spotipy.Spotify(auth=SPOTIFY_ACCESS_TOKEN)
