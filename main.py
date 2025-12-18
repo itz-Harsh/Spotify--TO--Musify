@@ -14,20 +14,20 @@ app = FastAPI(
 
 CLIENT_ID = os.getenv("SPOTIPY_CLIENT_ID")
 CLIENT_SECRET = os.getenv("SPOTIPY_CLIENT_SECRET")
-REDIRECT_URI = "https://spotify-to-musify.vercel.app/"
-
+REDIRECT_URI = os.getenv("SPOTIPY_REDIRECT_URI") or  "https://spotify-to-musify.vercel.app/"
+SPOTIFY_ACCESS_TOKEN = os.getenv("SPOTIFY_ACCESS_TOKEN")
 def export_playlist(playlist_id):
-    """
-    Exports a Spotify playlist's tracks to a CSV file.
-    """
-
-    sp = spotipy.Spotify(auth_manager=SpotifyOAuth(
-        client_id=CLIENT_ID,
-        client_secret=CLIENT_SECRET,
-        redirect_uri=REDIRECT_URI,
-        scope="playlist-read-private"
-    ))
-
+   
+    sp = spotipy.Spotify(auth=SPOTIFY_ACCESS_TOKEN)
+    # auth_manager = spotipy.Spotify(auth_manager=SpotifyOAuth(
+    #     client_id=CLIENT_ID,
+    #     client_secret=CLIENT_SECRET,
+    #     redirect_uri=REDIRECT_URI,
+    #     scope="playlist-read-private",
+    #     cache_handler=None 
+    # ))
+    # auth_manager.refresh_access_token(os.getenv("SPOTIFY_REFRESH_TOKEN"))
+    # sp = spotipy.Spotify(auth_manager=auth_manager)
     tracks = []
     results = sp.playlist_tracks(playlist_id)
     for item in results['items']:
