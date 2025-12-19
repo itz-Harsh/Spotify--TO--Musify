@@ -1,7 +1,7 @@
 import base64
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
-import os , requests
+import os , requests , time
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 
@@ -74,7 +74,7 @@ def home():
 
 @app.get("/api/{url}")
 def convert(url : str):
-    
+    start = time.time()
     try:
         data = []
         playlist_id = url.split("/")[-1].split("?")[0]
@@ -86,16 +86,22 @@ def convert(url : str):
             raw = requests.get(f"https://jiosaavn-api-murex-nu.vercel.app/api/search?query={track}")
             song_data = raw.json().get("data").get("songs").get("results")
             id = song_data[0].get("id") if song_data else None
-
+            
+            if id is None:
+                continue
             songs = requests.get(f"https://jiosaavn-api-murex-nu.vercel.app/api/songs/{id}")
             song_info = songs.json().get("data")[0]
-
             data.append(song_info)
+            
+        end = time.time()
+        print(f"Execution time: {end - start} seconds")
+            
         return {"data": data}
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+    
 
 
 if __name__ == '__main__':
