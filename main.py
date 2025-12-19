@@ -4,13 +4,27 @@ from spotipy.oauth2 import SpotifyOAuth
 import os , requests , time
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 
 load_dotenv()
+
 
 app = FastAPI(
     title="Spotify Playlist Exporter API",
     description="Export Spotify playlists for Musify using FastAPI + Spotipy",
     version="1.0.0"
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",        # Vite
+        "http://localhost:3000",        # React
+        "https://musify-harsh.vercel.app/"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 CLIENT_ID = os.getenv("SPOTIPY_CLIENT_ID")
