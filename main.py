@@ -115,6 +115,7 @@ def convert(url : str):
         return {
             "success" : True,
             "data" : {
+                "name" : " ",
                 "type" : "playlist",
                 "year" : today,
                 "image" : data[0].get("image")[2].get("url"),
