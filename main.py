@@ -51,26 +51,19 @@ SPOTIFY_ACCESS_TOKEN = get_new_access_token()
 def export_playlist(playlist_id):
    
     sp = spotipy.Spotify(auth=SPOTIFY_ACCESS_TOKEN)
-    # auth_manager = spotipy.Spotify(auth_manager=SpotifyOAuth(
-    #     client_id=CLIENT_ID,
-    #     client_secret=CLIENT_SECRET,
-    #     redirect_uri=REDIRECT_URI,
-    #     scope="playlist-read-private",
-    #     cache_handler=None 
-    # ))
-    # auth_manager.refresh_access_token(os.getenv("SPOTIFY_REFRESH_TOKEN"))
-    # sp = spotipy.Spotify(auth_manager=auth_manager)
+
     tracks = []
     results = sp.playlist_tracks(playlist_id)
     for item in results['items']:
         track = item['track']
-        tracks.append(track["name"] + " " + track["album"]["name"])
+        tracks.append(track["name"].split("(")[0] + " " + track["artists"][0]["name"])
         
     if not tracks:
         print("No tracks found or unable to access playlist.")
         return
-    
+
     return tracks
+
 
 
 
@@ -90,15 +83,14 @@ def convert(url : str):
             raise HTTPException(status_code=404, detail="Playlist not found or inaccessible.")
         
         for track in tracks:
-            raw = requests.get(f"https://saavn.sumit.co/api/search?query={track}")
-            song_data = raw.json().get("data").get("topQuery")
-            data.append(song_data)
+            raw = requests.get(f"https://jiosaavn-api-murex-nu.vercel.app/api/search?query={track}")
+            song_data = raw.json().get("data").get("songs").get("results")
+            data.append(song_data[0]) if song_data else None
         
         return {"data": data}
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
 
 
 
