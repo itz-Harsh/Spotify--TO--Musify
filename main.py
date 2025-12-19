@@ -1,13 +1,13 @@
 import base64
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
-import os , requests , time , random
+import os , requests , time 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from datetime import date
+from datetime import datetime
 
-today = date.today()
+today = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 load_dotenv()
 
 
