@@ -1,11 +1,13 @@
 import base64
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
-import os , requests , time
+import os , requests , time , random
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from datetime import date
 
+today = date.today()
 load_dotenv()
 
 
@@ -61,7 +63,6 @@ def get_new_access_token():
 
 SPOTIFY_ACCESS_TOKEN = get_new_access_token()
 
-
 def export_playlist(playlist_id):
    
     sp = spotipy.Spotify(auth=SPOTIFY_ACCESS_TOKEN)
@@ -84,6 +85,7 @@ def export_playlist(playlist_id):
 @app.get("/")
 def home():
     return {"status": "API is Fine !"}
+
 
 
 @app.get("/api/{url}")
@@ -110,7 +112,15 @@ def convert(url : str):
         end = time.time()
         print(f"Execution time: {end - start} seconds")
             
-        return {"data": data}
+        return {
+            "success" : True,
+            "data" : {
+                "type" : "playlist",
+                "year" : today,
+                "image" : data[0].get("image")[2].get("url"),
+                "songs" : data
+            }
+        }
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
