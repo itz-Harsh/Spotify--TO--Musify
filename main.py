@@ -85,8 +85,12 @@ def convert(url : str):
         for track in tracks:
             raw = requests.get(f"https://jiosaavn-api-murex-nu.vercel.app/api/search?query={track}")
             song_data = raw.json().get("data").get("songs").get("results")
-            data.append(song_data[0]) if song_data else None
-        
+            id = song_data[0].get("id") if song_data else None
+
+            songs = requests.get(f"https://jiosaavn-api-murex-nu.vercel.app/api/songs/{id}")
+            song_info = songs.json().get("data")[0]
+
+            data.append(song_info)
         return {"data": data}
     
     except Exception as e:
