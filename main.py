@@ -103,10 +103,11 @@ def convert(_id : str):
     try:
         data = [] 
         raw = get_playlist_details(_id)
+        
         tracks = export_playlist(raw.get("tracks"))
         
         name = raw.get("name") 
-        image = raw.get("images")[1].get("url")
+        image = raw.get("images")[0].get("url")
         # return { name , image}
         if tracks is None:
             raise HTTPException(status_code=404, detail="Playlist not found or inaccessible.")
