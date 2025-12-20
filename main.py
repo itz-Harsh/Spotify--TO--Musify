@@ -1,6 +1,4 @@
 import base64
-import spotipy
-from spotipy.oauth2 import SpotifyOAuth
 import os , requests , time 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
@@ -22,7 +20,8 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5173",        # Vite
         "http://localhost:3000",        # React
-        "https://musify-harsh.vercel.app"
+        "https://musify-harsh.vercel.app",
+        "http://127.0.0.1:8000"
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -63,15 +62,13 @@ def get_new_access_token():
 
 SPOTIFY_ACCESS_TOKEN = get_new_access_token()
 
-def export_playlist(playlist_id):
+def export_playlist(track):
    
-    sp = spotipy.Spotify(auth=SPOTIFY_ACCESS_TOKEN)
-
     tracks = []
-    results = sp.playlist_tracks(playlist_id)
-    for item in results['items']:
-        track = item['track']
-        tracks.append(track["name"].split("(")[0] + " " + track["artists"][0]["name"])
+    
+    for item in track['items']:
+        song = item['track']
+        tracks.append(song["name"].split("(")[0] + " " + song["artists"][0]["name"])
         
     if not tracks:
         print("No tracks found or unable to access playlist.")
@@ -79,6 +76,18 @@ def export_playlist(playlist_id):
 
     return tracks
 
+
+def get_playlist_details(playlist_id, access_token= SPOTIFY_ACCESS_TOKEN):
+    url = f"https://api.spotify.com/v1/playlists/{playlist_id}"
+
+    headers = {
+        "Authorization": f"Bearer {access_token}"
+    }
+
+    res = requests.get(url, headers=headers)
+    res.raise_for_status()
+
+    return res.json()
 
 
 
@@ -88,15 +97,20 @@ def home():
 
 
 
-@app.get("/api/{url}")
-def convert(url : str):
+@app.get("/api/{_id}")
+def convert(_id : str):
     start = time.time()
     try:
-        data = []
-        playlist_id = url.split("/")[-1].split("?")[0]
-        tracks = export_playlist(playlist_id)
+        data = [] 
+        raw = get_playlist_details(_id)
+        tracks = export_playlist(raw.get("tracks"))
+        
+        name = raw.get("name") 
+        image = raw.get("images")[1].get("url")
+        # return { name , image}
         if tracks is None:
             raise HTTPException(status_code=404, detail="Playlist not found or inaccessible.")
+        
         
         for track in tracks:
             raw = requests.get(f"https://jiosaavn-api-murex-nu.vercel.app/api/search?query={track}")
@@ -111,23 +125,20 @@ def convert(url : str):
             
         end = time.time()
         print(f"Execution time: {end - start} seconds")
-            
+
         return {
             "success" : True,
             "data" : {
-                "name" : " ",
+                "name" : name,
                 "type" : "playlist",
                 "year" : today,
-                "image" : data[0].get("image")[2].get("url"),
+                "image" : image,
                 "songs" : data
             }
         }
-    
+            
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-    
-
 
 if __name__ == '__main__':
     app.run(debug=True)
