@@ -67,13 +67,28 @@ This is not a scraper — it’s an **API translation layer**.
 GET /
 
 Response:
+```
 {
   "status": "API is Fine !"
 }
+```
 
 ### Convert Spotify Playlist → JioSaavn Playlist
 GET /api/{spotify_playlist_url}
 
+Response:
+```
+{
+  "success": true,
+  "data": {
+    "type": "playlist",
+    "year": "2025-01-01",
+    "image": "cover_image_url",
+    "songs": [ ... ]
+  }
+}
+
+```
 ---
 
 ## 🛠️ Environment Variables
