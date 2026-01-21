@@ -114,13 +114,13 @@ def convert(_id : str):
         
         
         for track in tracks:
-            raw = requests.get(f"https://jiosaavn-api-murex-nu.vercel.app/api/search?query={track}")
+            raw = requests.get(f"https://jiosaavn-api-dc21.onrender.com/api/search?query={track}")
             song_data = raw.json().get("data").get("songs").get("results")
             id = song_data[0].get("id") if song_data else None
             
             if id is None:
                 continue
-            songs = requests.get(f"https://jiosaavn-api-murex-nu.vercel.app/api/songs/{id}")
+            songs = requests.get(f"https://jiosaavn-api-dc21.onrender.com/api/songs/{id}")
             song_info = songs.json().get("data")[0]
             data.append(song_info)
             
