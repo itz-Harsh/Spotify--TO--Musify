@@ -2,3 +2,4 @@ spotipy
 dotenv
 fastapi
 uvicorn
+httpx

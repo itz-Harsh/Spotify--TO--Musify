@@ -1,25 +1,27 @@
 import base64
-import os , requests , time 
+import os
+import asyncio
+import httpx
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime
 
-today = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 load_dotenv()
 
+today = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 app = FastAPI(
     title="Spotify Playlist Exporter API",
-    description="Export Spotify playlists for Musify using FastAPI + Spotipy",
-    version="1.0.0"
+    description="Export Spotify playlists for Musify using FastAPI + Async",
+    version="2.0.0"
 )
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5173",        # Vite
-        "http://localhost:3000",        # React
+        "http://localhost:5173",
+        "http://localhost:3000",
         "https://musify-harsh.vercel.app",
         "http://127.0.0.1:8000"
     ],
@@ -28,14 +30,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-CLIENT_ID = os.getenv("SPOTIPY_CLIENT_ID")
-CLIENT_SECRET = os.getenv("SPOTIPY_CLIENT_SECRET")
-REDIRECT_URI = os.getenv("SPOTIPY_REDIRECT_URI") or  "https://spotify-to-musify.vercel.app/"
+# --------------------------------------------------
+# 🔐 SPOTIFY TOKEN REFRESH
+# --------------------------------------------------
 
-
-
-
-def get_new_access_token():
+async def get_new_access_token():
     client_id = os.getenv("SPOTIPY_CLIENT_ID")
     client_secret = os.getenv("SPOTIPY_CLIENT_SECRET")
     refresh_token = os.getenv("SPOTIFY_REFRESH_TOKEN")
@@ -44,102 +43,146 @@ def get_new_access_token():
         f"{client_id}:{client_secret}".encode()
     ).decode()
 
-    response = requests.post(
-        "https://accounts.spotify.com/api/token",
-        headers={
-            "Authorization": f"Basic {auth_header}",
-            "Content-Type": "application/x-www-form-urlencoded",
-        },
-        data={
-            "grant_type": "refresh_token",
-            "refresh_token": refresh_token,
-        },
-        timeout=10,
-    )
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            "https://accounts.spotify.com/api/token",
+            headers={
+                "Authorization": f"Basic {auth_header}",
+                "Content-Type": "application/x-www-form-urlencoded",
+            },
+            data={
+                "grant_type": "refresh_token",
+                "refresh_token": refresh_token,
+            },
+        )
 
-    response.raise_for_status()
-    return response.json()["access_token"]
+        response.raise_for_status()
+        return response.json()["access_token"]
 
-SPOTIFY_ACCESS_TOKEN = get_new_access_token()
 
-def export_playlist(track):
-   
+# --------------------------------------------------
+# 🎵 GET PLAYLIST DETAILS
+# --------------------------------------------------
+
+async def get_playlist_details(playlist_id, access_token):
+    url = f"https://api.spotify.com/v1/playlists/{playlist_id}"
+
+    async with httpx.AsyncClient(timeout=20) as client:
+        res = await client.get(
+            url,
+            headers={"Authorization": f"Bearer {access_token}"}
+        )
+        res.raise_for_status()
+        return res.json()
+
+
+# --------------------------------------------------
+# 🎶 EXTRACT TRACK NAMES
+# --------------------------------------------------
+
+def export_playlist(raw_tracks):
     tracks = []
-    
-    for item in track['items']:
-        song = item['track']
-        tracks.append(song["name"].split("(")[0] + " " + song["artists"][0]["name"])
-        
-    if not tracks:
-        print("No tracks found or unable to access playlist.")
-        return
+
+    for item in raw_tracks.get("items", []):
+        song = item.get("track")
+        if not song:
+            continue
+
+        name = song.get("name", "").split("(")[0]
+        artist = song.get("artists", [{}])[0].get("name", "")
+        tracks.append(f"{name} {artist}")
 
     return tracks
 
 
-def get_playlist_details(playlist_id, access_token= SPOTIFY_ACCESS_TOKEN):
-    url = f"https://api.spotify.com/v1/playlists/{playlist_id}"
+# --------------------------------------------------
+# 🚀 CONCURRENT JIOSAAVN FETCH
+# --------------------------------------------------
 
-    headers = {
-        "Authorization": f"Bearer {access_token}"
-    }
+semaphore = asyncio.Semaphore(10)  # limit concurrency
 
-    res = requests.get(url, headers=headers)
-    res.raise_for_status()
+async def fetch_song(client, track):
+    async with semaphore:
+        try:
+            # search
+            search_res = await client.get(
+                "https://jiosaavn-api-dc21.onrender.com/api/search",
+                params={"query": track},
+                timeout=20
+            )
 
-    return res.json()
+            song_data = search_res.json().get("data", {}).get("songs", {}).get("results", [])
+            if not song_data:
+                return None
+
+            song_id = song_data[0].get("id")
+            if not song_id:
+                return None
+
+            # get details
+            song_res = await client.get(
+                f"https://jiosaavn-api-dc21.onrender.com/api/songs/{song_id}",
+                timeout=20
+            )
+
+            return song_res.json().get("data", [])[0]
+
+        except Exception:
+            return None
 
 
+# --------------------------------------------------
+# 🌐 ROUTES
+# --------------------------------------------------
 
 @app.get("/")
-def home():
+async def home():
     return {"status": "API is Fine !"}
 
 
+@app.get("/api/{playlist_id}")
+async def convert(playlist_id: str):
+    start = datetime.now()
 
-@app.get("/api/{_id}")
-def convert(_id : str):
-    start = time.time()
     try:
-        data = [] 
-        raw = get_playlist_details(_id)
-        
-        tracks = export_playlist(raw.get("tracks"))
-        
-        name = raw.get("name") 
-        image = raw.get("images")[0].get("url")
-        # return { name , image}
-        if tracks is None:
-            raise HTTPException(status_code=404, detail="Playlist not found or inaccessible.")
-        
-        
-        for track in tracks:
-            raw = requests.get(f"https://jiosaavn-api-dc21.onrender.com/api/search?query={track}")
-            song_data = raw.json().get("data").get("songs").get("results")
-            id = song_data[0].get("id") if song_data else None
-            
-            if id is None:
-                continue
-            songs = requests.get(f"https://jiosaavn-api-dc21.onrender.com/api/songs/{id}")
-            song_info = songs.json().get("data")[0]
-            data.append(song_info)
-            
-        end = time.time()
-        print(f"Execution time: {end - start} seconds")
+        access_token = await get_new_access_token()
+        print(access_token)
+        raw_playlist = await get_playlist_details(playlist_id, access_token)
+
+        tracks = export_playlist(raw_playlist.get("tracks", {}))
+        if not tracks:
+            raise HTTPException(status_code=404, detail="Playlist not found or empty.")
+
+        name = raw_playlist.get("name")
+        image = raw_playlist.get("images", [{}])[0].get("url")
+
+        async with httpx.AsyncClient(timeout=20) as client:
+            tasks = [fetch_song(client, track) for track in tracks]
+            results = await asyncio.gather(*tasks)
+
+        songs = [song for song in results if song]
+
+        end = datetime.now()
+        print("Execution time:", (end - start).total_seconds(), "seconds")
 
         return {
-            "success" : True,
-            "data" : {
-                "name" : name,
-                "type" : "playlist",
-                "year" : today,
-                "image" : image,
-                "songs" : data
+            "success": True,
+            "data": {
+                "name": name,
+                "type": "playlist",
+                "year": today,
+                "image": image,
+                "songs": songs
             }
         }
-            
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-if __name__ == '__main__':
+
+# --------------------------------------------------
+# ▶ RUN SERVER
+# --------------------------------------------------
+
+if __name__ == "__main__":
     app.run(debug=True)
