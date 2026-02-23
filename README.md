@@ -10,7 +10,7 @@ A powerful backend service that **extracts Spotify playlists** and **converts th
 ## ✨ What This Does
 
 This backend acts as a **bridge between Spotify and JioSaavn** for extracting the favorite playlist of spotify.
-
+ 
 You give it a **Spotify playlist URL**, and it will:
 - 🔐 Authenticate with Spotify securely (no user login required)
 - 🎶 Extract all playlist tracks
