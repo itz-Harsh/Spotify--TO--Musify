@@ -137,7 +137,8 @@ async def fetch_song(client, track):
 
 @app.get("/")
 async def home():
-    return {"status": "API is Fine !"}
+    return {"status": "API is Fine !",
+            "routes" : "/api/{spotify_playlist_id}"}
 
 
 @app.get("/api/{playlist_id}")
