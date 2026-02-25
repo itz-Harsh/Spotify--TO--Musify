@@ -106,7 +106,7 @@ async def fetch_song(client, track):
         try:
             # search
             search_res = await client.get(
-                "https://jiosaavn-api-dc21.onrender.com/api/search",
+                "https://jiosaavn-harsh.vercel.app/api/search",
                 params={"query": track},
                 timeout=20
             )
@@ -121,7 +121,7 @@ async def fetch_song(client, track):
 
             # get details
             song_res = await client.get(
-                f"https://jiosaavn-api-dc21.onrender.com/api/songs/{song_id}",
+                f"https://jiosaavn-harsh.vercel.app/api/songs/{song_id}",
                 timeout=20
             )
 
